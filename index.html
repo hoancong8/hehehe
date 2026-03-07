@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+
+    <style>
+        /* Reset margin và nền đen */
+        body {
+            margin: 0;
+            background: black;
+            overflow: hidden;
+            /* không cho scroll */
+        }
+    </style>
+
+    <!-- Import map giúp browser hiểu "three" là thư viện nào -->
+    <script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+</head>
+
+<body>
+    <button id="btn" style="
+position:absolute;
+top:20px;
+left:20px;
+padding:10px 20px;
+font-size:16px;
+">
+        SHOW HOAN
+    </button>
+    <script type="module">
+
+        // Import thư viện 3D
+        import * as THREE from "three";
+
+        // Import control để xoay camera bằng chuột
+        import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+        import { FontLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/FontLoader.js";
+        import { TextGeometry } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/geometries/TextGeometry.js";
+        import { MeshSurfaceSampler } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/math/MeshSurfaceSampler.js";
+        // ========================
+        // TẠO SCENE
+        // ========================
+
+        // Scene là "thế giới 3D" nơi chứa mọi object
+        const scene = new THREE.Scene();
+
+        // ========================
+        // TẠO CAMERA
+        // ========================
+        const camera = new THREE.PerspectiveCamera(
+            75, // góc nhìn (FOV)
+
+            window.innerWidth / window.innerHeight, // tỉ lệ màn hình
+
+            0.1, // khoảng cách render gần nhất
+
+            1000 // khoảng cách render xa nhất
+        );
+
+        // đẩy camera ra xa để nhìn thấy sphere
+        camera.position.z = 150;
+
+
+        // ========================
+        // TẠO RENDERER
+        // ========================
+
+        // Renderer dùng WebGL để vẽ scene
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+        // set kích thước canvas = full màn hình
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // thêm canvas vào HTML
+        document.body.appendChild(renderer.domElement);
+
+
+        // ========================
+        // CHUỘT XOAY CAMERA
+        // ========================
+
+        // cho phép drag chuột xoay camera
+        const controls = new OrbitControls(camera, renderer.domElement);
+
+
+        // ========================
+        // TẠO PARTICLES
+        // ========================
+
+        // số lượng hạt
+        const particles = 50000;
+
+        // geometry chứa dữ liệu vị trí của các hạt
+        const geometry = new THREE.BufferGeometry();
+        // mảng chứa vị trí xyz của từng hạt
+        // mỗi hạt có 3 giá trị (x,y,z)
+        // const positions = new Float32Array(particles * 3);
+        const spherePositions = new Float32Array(particles * 3);
+        const currentPositions = new Float32Array(particles * 3);
+        const textPositions = new Float32Array(particles * 3);
+        let targetPositions = spherePositions;
+        let isText = false;
+        let textReady = false;
+        // bán kính sphere
+        const radius = 150;
+
+        // ========================
+        // TẠO VỊ TRÍ HẠT
+        // ========================
+
+        for (let i = 0; i < particles; i++) {
+
+            // góc xoay quanh trục
+            const theta = Math.random() * Math.PI * 2;
+
+            // góc từ cực
+            const phi = Math.acos((Math.random() * 2) - 1);
+
+            // random radius nhưng bias về tâm
+            // pow(random,2) làm hạt tập trung nhiều ở trung tâm
+            const r = radius * Math.pow(Math.random(), 1.2);
+
+            // chuyển từ tọa độ cầu → tọa độ xyz
+            spherePositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            spherePositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+            spherePositions[i * 3 + 2] = r * Math.cos(phi);
+
+            spherePositions[i * 3] += (Math.random() - 0.5) * 2;
+            spherePositions[i * 3 + 1] += (Math.random() - 0.5) * 2;
+            spherePositions[i * 3 + 2] += (Math.random() - 0.5) * 2;
+
+        }
+        currentPositions.set(spherePositions);
+
+        // đưa dữ liệu position vào geometry
+        geometry.setAttribute(
+            "position",
+            new THREE.BufferAttribute(currentPositions, 3)
+        );
+
+
+        // ========================
+        // TEXTURE PARTICLE
+        // ========================
+
+        // texture hình tròn giúp particle không bị vuông
+        const texture = new THREE.TextureLoader().load(
+            "https://threejs.org/examples/textures/sprites/disc.png"
+        );
+
+
+        // ========================
+        // MATERIAL PARTICLE
+        // ========================
+
+        const material = new THREE.PointsMaterial({
+
+            map: texture, // dùng texture tròn
+
+            size: 0.8, // kích thước particle
+
+            transparent: true, // cho phép alpha
+
+            depthWrite: false, // tránh lỗi depth khi particle chồng nhau
+
+            blending: THREE.AdditiveBlending, // ánh sáng cộng dồn (glow)
+
+            sizeAttenuation: true, // particle xa sẽ nhỏ hơn
+
+            color: 0xff4fa3 // màu hồng
+        });
+        // const glowMaterial = new THREE.PointsMaterial({
+        //     map: texture,
+        //     size: 1.2,
+        //     transparent: true,
+        //     blending: THREE.AdditiveBlending,
+        //     depthWrite: false,
+        //     opacity: 0.4,
+        //     color: 0xff77cc
+        // });
+
+        // const glow = new THREE.Points(geometry, glowMaterial);
+
+        // scene.add(glow);
+
+        // ========================
+        // TẠO OBJECT PARTICLE
+        // ========================
+
+        // Points = object chứa nhiều particle
+        const sphere = new THREE.Points(geometry, material);
+        const loader = new FontLoader();
+
+        loader.load(
+            "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+            function (font) {
+
+                const textGeo = new TextGeometry("HOAN DZ", {
+                    font: font,
+                    size: 40,
+                    height: 5,
+                    curveSegments: 12,
+                    bevelEnabled: false
+                });
+
+                textGeo.center();
+
+                const textMesh = new THREE.Mesh(textGeo);
+
+                const sampler = new MeshSurfaceSampler(textMesh).build();
+
+                const tempPosition = new THREE.Vector3();
+
+                for (let i = 0; i < particles; i++) {
+
+                    sampler.sample(tempPosition);
+
+                    textPositions[i * 3] = tempPosition.x;
+                    textPositions[i * 3 + 1] = tempPosition.y;
+                    textPositions[i * 3 + 2] = tempPosition.z;
+
+                }
+                textReady = true;
+            });
+        // thêm vào scene
+        scene.add(sphere);
+
+        // ========================
+        // ANIMATION LOOP
+        // ========================
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = Date.now() * 0.001;
+            material.size = 0.5 + Math.sin(time * 3) * 0.1;
+            // xoay sphere nhẹ
+            sphere.rotation.y += 0.001;
+            // update control chuột
+            controls.update();
+            // render scene
+            const pos = currentPositions;
+
+            for (let i = 0; i < particles * 3; i++) {
+
+                pos[i] += (targetPositions[i] - pos[i]) * 0.05;
+
+            }
+
+            geometry.attributes.position.needsUpdate = true;
+            renderer.render(scene, camera);
+        }
+
+        animate();
+        const button = document.getElementById("btn");
+
+        button.onclick = () => {
+
+            if (!textReady) return; // chưa load font thì bỏ
+
+            if (isText) {
+                targetPositions = spherePositions;
+            } else {
+                targetPositions = textPositions;
+            }
+
+            isText = !isText;
+
+        };
+    </script>
+
+</body>
+
+</html>
