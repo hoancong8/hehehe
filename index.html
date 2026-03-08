@@ -92,7 +92,7 @@ font-size:16px;
         // cho phép drag chuột xoay camera
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.mouseButtons.RIGHT = null;
-
+        controls.enablePan = false;
         // số lượng hạt
         const particles = 50000;
 
