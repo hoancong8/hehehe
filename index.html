@@ -66,7 +66,7 @@ font-size:16px;
         );
 
         // đẩy camera ra xa để nhìn thấy sphere
-        camera.position.z = 200;
+        camera.position.z = 250;
 
 
         // ========================
@@ -75,7 +75,9 @@ font-size:16px;
 
         // Renderer dùng WebGL để vẽ scene
         const renderer = new THREE.WebGLRenderer({ antialias: true });
-
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let focusedSprite = null;
         // set kích thước canvas = full màn hình
         renderer.setSize(window.innerWidth, window.innerHeight);
 
@@ -90,10 +92,6 @@ font-size:16px;
         // cho phép drag chuột xoay camera
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.mouseButtons.RIGHT = null;
-
-        // ========================
-        // TẠO PARTICLES
-        // ========================
 
         // số lượng hạt
         const particles = 50000;
@@ -112,11 +110,17 @@ font-size:16px;
             "img6.jpg",
             "img7.jpg",
             "img8.jpg",
+            "img1.jpg",
+            "img2.jpg",
+            "img3.jpg",
+            "img4.jpg",
+            "img5.jpg",
         ];
         let i = 0;
         const spherePositions = new Float32Array(particles * 3);
         const currentPositions = new Float32Array(particles * 3);
         const textPositions = new Float32Array(particles * 3);
+        const superTextPositions = new Float32Array(particles * 3);
         // const explodePositions = new Float32Array(particles * 3);
         let targetPositions = spherePositions;
         let isText = false;
@@ -282,7 +286,7 @@ font-size:16px;
                 const size = 40;
 
                 sprite.scale.set(size * ratio, size, 1);
-
+                sprite.userData.baseScale = new THREE.Vector3(size * ratio, size, 1);
             });
 
         });
@@ -313,19 +317,7 @@ font-size:16px;
             ));
 
         });
-        // const glowMaterial = new THREE.PointsMaterial({
-        //     map: texture,
-        //     size: 1.2,
-        //     transparent: true,
-        //     blending: THREE.AdditiveBlending,
-        //     depthWrite: false,
-        //     opacity: 0.4,
-        //     color: 0xff77cc
-        // });
 
-        // const glow = new THREE.Points(geometry, glowMaterial);
-
-        // scene.add(glow);
 
         // ========================
         // TẠO OBJECT PARTICLE
@@ -364,17 +356,29 @@ font-size:16px;
                     textPositions[i * 3 + 2] = tempPosition.z;
 
                 }
-                // for (let j = 0; j < sprites.length; j++) {
+                const textGeo2 = new TextGeometry("HOAN SIEU DZ", {
+                    font: font,
+                    size: 40,
+                    height: 5,
+                    curveSegments: 12,
+                    bevelEnabled: false
+                });
 
-                //     const id = Math.floor(Math.random() * particles);
+                textGeo2.center();
 
-                //     sprites[j].position.set(
-                //         textPositions[id * 3],
-                //         textPositions[id * 3 + 1],
-                //         textPositions[id * 3 + 2]
-                //     );
+                const textMesh2 = new THREE.Mesh(textGeo2);
 
-                // }
+                const sampler2 = new MeshSurfaceSampler(textMesh2).build();
+
+                for (let i = 0; i < particles; i++) {
+
+                    sampler2.sample(tempPosition);
+
+                    superTextPositions[i * 3] = tempPosition.x;
+                    superTextPositions[i * 3 + 1] = tempPosition.y;
+                    superTextPositions[i * 3 + 2] = tempPosition.z;
+
+                }
                 textReady = true;
             });
         // thêm vào scene
@@ -401,31 +405,107 @@ font-size:16px;
 
             sprites.forEach((sprite, k) => {
 
-                const target = explodePositions[k];
+                if (sprite !== focusedSprite) {
 
-                sprite.position.lerp(target, 0.05);
+                    const target = explodePositions[k];
+
+                    sprite.position.lerp(target, 0.05);
+
+                }
+                if (!isText) {
+
+                    const time = Date.now() * 0.001;
+
+                    // sprite.position.x += Math.sin(time * 2 + k) * 0.3;
+                    sprite.position.y += Math.cos(time * 2 + k) * 0.2;
+
+                }
 
             });
 
 
-            for (let i = 0; i < particles * 3; i++) {
+            for (let i = 0; i < particles; i++) {
 
-                pos[i] += (targetPositions[i] - pos[i]) * 0.05;
+                const ix = i * 3;
+                const iy = i * 3 + 1;
+                const iz = i * 3 + 2;
+
+                pos[ix] += (targetPositions[ix] - pos[ix]) * 0.05;
+                pos[iy] += (targetPositions[iy] - pos[iy]) * 0.05;
+                pos[iz] += (targetPositions[iz] - pos[iz]) * 0.05;
+
+                // rung nhẹ khi đang là text
+                if (isText) {
+
+                    pos[ix] += Math.sin(time * 3 + i) * 0.02;
+                    pos[iy] += Math.cos(time * 2 + i) * 0.02;
+
+                }
 
             }
+            if (focusedSprite) {
 
-            // sprites.forEach((sprite, i) => {
-            //     const time = Date.now() * 0.001;
-            //     sprite.position.y += Math.sin(time + i) * 0.1;
-            //     sprite.position.x += Math.cos(time + i) * 0.05;
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
 
-            // });
+                const targetPos = camera.position.clone().add(dir.multiplyScalar(120));
+                focusedSprite.position.lerp(targetPos, 0.08);
+
+                const base = focusedSprite.userData.baseScale;
+
+                focusedSprite.scale.lerp(
+                    new THREE.Vector3(base.x * 3, base.y * 3, 1),
+                    0.08
+                );
+
+            }
+            sprites.forEach((sprite, k) => {
+
+                if (sprite !== focusedSprite) {
+
+                    const target = explodePositions[k];
+
+                    sprite.position.lerp(target, 0.05);
+
+                    if (sprite.userData.baseScale) {
+
+                        sprite.scale.lerp(
+                            sprite.userData.baseScale,
+                            0.08
+                        );
+
+                    }
+
+                }
+
+            });
             glow.rotation.copy(sphere.rotation);
             geometry.attributes.position.needsUpdate = true;
             renderer.render(scene, camera);
         }
 
         animate();
+        window.addEventListener("click", onClick);
+        function onClick(event) {
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(sprites);
+
+            if (intersects.length > 0) {
+
+                focusedSprite = intersects[0].object;
+
+            } else {
+
+                focusedSprite = null;
+
+            }
+
+        }
         const button = document.getElementById("btn");
 
         button.onclick = () => {
@@ -446,6 +526,12 @@ font-size:16px;
                 i = 0;
             } else {
                 targetPositions = textPositions;
+                setTimeout(() => {
+
+                    targetPositions = superTextPositions;
+
+                }, 2000);
+
                 i = 1;
             }
 
