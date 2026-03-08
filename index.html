@@ -66,7 +66,7 @@ font-size:16px;
         );
 
         // đẩy camera ra xa để nhìn thấy sphere
-        camera.position.z = 150;
+        camera.position.z = 200;
 
 
         // ========================
@@ -89,7 +89,7 @@ font-size:16px;
 
         // cho phép drag chuột xoay camera
         const controls = new OrbitControls(camera, renderer.domElement);
-
+        controls.mouseButtons.RIGHT = null;
 
         // ========================
         // TẠO PARTICLES
@@ -103,9 +103,21 @@ font-size:16px;
         // mảng chứa vị trí xyz của từng hạt
         // mỗi hạt có 3 giá trị (x,y,z)
         // const positions = new Float32Array(particles * 3);
+        const imageUrls = [
+            "img1.jpg",
+            "img2.jpg",
+            "img3.jpg",
+            "img4.jpg",
+            "img5.jpg",
+            "img6.jpg",
+            "img7.jpg",
+            "img8.jpg",
+        ];
+        let i = 0;
         const spherePositions = new Float32Array(particles * 3);
         const currentPositions = new Float32Array(particles * 3);
         const textPositions = new Float32Array(particles * 3);
+        // const explodePositions = new Float32Array(particles * 3);
         let targetPositions = spherePositions;
         let isText = false;
         let textReady = false;
@@ -115,7 +127,30 @@ font-size:16px;
         // ========================
         // TẠO VỊ TRÍ HẠT
         // ========================
+        const stars = new THREE.BufferGeometry();
+        const starPositions = new Float32Array(2000 * 3);
 
+        for (let i = 0; i < 2000; i++) {
+
+            starPositions[i * 3] = (Math.random() - 0.5) * 2000;
+            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
+            starPositions[i * 3 + 2] = (Math.random() - 0.5) * 2000;
+
+        }
+
+        stars.setAttribute(
+            "position",
+            new THREE.BufferAttribute(starPositions, 3)
+        );
+
+        const starMaterial = new THREE.PointsMaterial({
+            size: 1,
+            color: 0xff66cc
+        });
+
+        const starField = new THREE.Points(stars, starMaterial);
+
+        scene.add(starField);
         for (let i = 0; i < particles; i++) {
 
             // góc xoay quanh trục
@@ -177,6 +212,107 @@ font-size:16px;
 
             color: 0xff4fa3 // màu hồng
         });
+        const glowMaterial = new THREE.PointsMaterial({
+
+            map: texture,
+            size: 1.2,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            opacity: 0.2,
+            color: 0xff77cc
+
+        });
+        const glow = new THREE.Points(geometry, glowMaterial);
+        scene.add(glow);
+        const sprites = [];
+        const loaderTexture = new THREE.TextureLoader();
+        function roundedTexture(image, radius = 80) {
+
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+
+            canvas.width = image.width;
+            canvas.height = image.height;
+
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(canvas.width - radius, 0);
+            ctx.quadraticCurveTo(canvas.width, 0, canvas.width, radius);
+            ctx.lineTo(canvas.width, canvas.height - radius);
+            ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - radius, canvas.height);
+            ctx.lineTo(radius, canvas.height);
+            ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+
+            ctx.clip();
+            ctx.drawImage(image, 0, 0);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+
+            return tex;
+        }
+        imageUrls.forEach(url => {
+
+            const spriteMaterial = new THREE.SpriteMaterial({
+                transparent: true,
+                depthWrite: false,
+                opacity: 0.95
+            });
+
+            const sprite = new THREE.Sprite(spriteMaterial);
+
+            sprite.position.set(0, 0, 0);
+            sprite.visible = false;
+
+            scene.add(sprite);
+            sprites.push(sprite);
+
+            loaderTexture.load(url, (texture) => {
+
+                texture.colorSpace = THREE.SRGBColorSpace;
+
+                const rounded = roundedTexture(texture.image, 120);
+                spriteMaterial.map = rounded;
+
+                const ratio = texture.image.width / texture.image.height;
+                const size = 40;
+
+                sprite.scale.set(size * ratio, size, 1);
+
+            });
+
+        });
+        const explodePositions = [];
+        const startPositions = [];
+
+        sprites.forEach(() => {
+
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(Math.random() * 2 - 1);
+
+            const r = 100 * Math.cbrt(Math.random()); // nằm trong sphere
+
+            const x = r * Math.sin(phi) * Math.cos(theta);
+            const y = r * Math.sin(phi) * Math.sin(theta);
+            const z = r * Math.cos(phi);
+
+            explodePositions.push(new THREE.Vector3(x, y, z));
+
+        });
+
+        sprites.forEach(sprite => {
+
+            startPositions.push(new THREE.Vector3(
+                0,
+                0,
+                0
+            ));
+
+        });
         // const glowMaterial = new THREE.PointsMaterial({
         //     map: texture,
         //     size: 1.2,
@@ -200,7 +336,7 @@ font-size:16px;
         const loader = new FontLoader();
 
         loader.load(
-            "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+            "https://threejs.org/examples/fonts/gentilis_regular.typeface.json",
             function (font) {
 
                 const textGeo = new TextGeometry("HOAN DZ", {
@@ -228,6 +364,17 @@ font-size:16px;
                     textPositions[i * 3 + 2] = tempPosition.z;
 
                 }
+                // for (let j = 0; j < sprites.length; j++) {
+
+                //     const id = Math.floor(Math.random() * particles);
+
+                //     sprites[j].position.set(
+                //         textPositions[id * 3],
+                //         textPositions[id * 3 + 1],
+                //         textPositions[id * 3 + 2]
+                //     );
+
+                // }
                 textReady = true;
             });
         // thêm vào scene
@@ -242,11 +389,24 @@ font-size:16px;
             const time = Date.now() * 0.001;
             material.size = 0.5 + Math.sin(time * 3) * 0.1;
             // xoay sphere nhẹ
-            sphere.rotation.y += 0.001;
+            if (!isText) {
+                sphere.rotation.y += 0.001;
+            }
+
             // update control chuột
             controls.update();
-            // render scene
+            // render scene 
             const pos = currentPositions;
+
+
+            sprites.forEach((sprite, k) => {
+
+                const target = explodePositions[k];
+
+                sprite.position.lerp(target, 0.05);
+
+            });
+
 
             for (let i = 0; i < particles * 3; i++) {
 
@@ -254,6 +414,13 @@ font-size:16px;
 
             }
 
+            // sprites.forEach((sprite, i) => {
+            //     const time = Date.now() * 0.001;
+            //     sprite.position.y += Math.sin(time + i) * 0.1;
+            //     sprite.position.x += Math.cos(time + i) * 0.05;
+
+            // });
+            glow.rotation.copy(sphere.rotation);
             geometry.attributes.position.needsUpdate = true;
             renderer.render(scene, camera);
         }
@@ -265,10 +432,21 @@ font-size:16px;
 
             if (!textReady) return; // chưa load font thì bỏ
 
+
+            if (i === 1) {
+                sprites.forEach(sprite => {
+
+                    sprite.position.set(0, 0, 0); // reset về trung tâm
+                    sprite.visible = true;
+
+                });
+            }
             if (isText) {
                 targetPositions = spherePositions;
+                i = 0;
             } else {
                 targetPositions = textPositions;
+                i = 1;
             }
 
             isText = !isText;
