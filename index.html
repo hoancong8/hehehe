@@ -1,546 +1,286 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="🎉 Chúc mừng sinh nhật Hoàn — 3D Particle Experience với Three.js">
+    <meta name="theme-color" content="#000000">
+    <title>Happy Birthday Hoàn 🎉</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Import Map: giúp browser resolve bare specifiers -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three":          "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/":  "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+    </script>
 
     <style>
-        /* Reset margin và nền đen */
-        body {
+        /* ── Reset ─────────────────────────────────────────── */
+        *, *::before, *::after {
+            box-sizing: border-box;
             margin: 0;
-            background: black;
+            padding: 0;
+        }
+
+        body {
+            background: #000;
             overflow: hidden;
-            /* không cho scroll */
+            font-family: 'Inter', system-ui, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ── Loading Screen ──────────────────────────────────── */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at 50% 60%, #1a0030 0%, #000 65%);
+            transition: opacity 0.7s ease;
+        }
+
+        #loading-content {
+            text-align: center;
+            padding: 24px;
+        }
+
+        #loading-title {
+            font-size: clamp(1.4rem, 5vw, 2.4rem);
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff4fa3 0%, #c77dff 50%, #ff4fa3 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 2.4s linear infinite;
+            margin-bottom: 36px;
+            letter-spacing: 0.04em;
+        }
+
+        @keyframes shimmer {
+            to { background-position: 200% center; }
+        }
+
+        #loading-bar-wrapper {
+            width: min(340px, 78vw);
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 99px;
+            overflow: hidden;
+            margin: 0 auto 16px;
+        }
+
+        #loading-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff4fa3, #c77dff);
+            border-radius: 99px;
+            transition: width 0.35s ease;
+            box-shadow: 0 0 14px #ff4fa3bb;
+        }
+
+        #loading-text {
+            font-size: clamp(0.75rem, 2vw, 0.88rem);
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.06em;
+        }
+
+        /* ── Floating particles decoration on loading screen ── */
+        #loading-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(255, 79, 163, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(199, 125, 255, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* ── Main Button ──────────────────────────────────────── */
+        #btn {
+            position: fixed;
+            bottom: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 14px 36px;
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(13px, 2vw, 15px);
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #ff4fa3 0%, #c77dff 100%);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            overflow: hidden;
+            transition:
+                transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.2s ease,
+                opacity 0.4s ease;
+            box-shadow: 0 4px 24px rgba(255, 79, 163, 0.35);
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+            min-width: 160px;
+            letter-spacing: 0.03em;
+        }
+
+        #btn.ready {
+            opacity: 1;
+            pointer-events: auto;
+            animation: pulse-btn 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-btn {
+            0%, 100% { box-shadow: 0 4px 24px rgba(255, 79, 163, 0.35); }
+            50%       { box-shadow: 0 4px 36px rgba(255, 79, 163, 0.65); }
+        }
+
+        #btn:hover {
+            transform: translateX(-50%) translateY(-3px) scale(1.04);
+            box-shadow: 0 10px 36px rgba(255, 79, 163, 0.55);
+            animation: none;
+        }
+
+        #btn:active {
+            transform: translateX(-50%) translateY(0) scale(0.97);
+            box-shadow: 0 2px 14px rgba(255, 79, 163, 0.3);
+        }
+
+        /* Ripple overlay */
+        #btn-ripple {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        #btn-ripple.active::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300%;
+            height: 300%;
+            margin: -150% 0 0 -150%;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 50%;
+            animation: ripple-out 0.55s ease-out forwards;
+        }
+
+        @keyframes ripple-out {
+            from { transform: scale(0); opacity: 1; }
+            to   { transform: scale(1);  opacity: 0; }
+        }
+
+        /* ── Click Hint ──────────────────────────────────────── */
+        #click-hint {
+            position: fixed;
+            top: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(10px, 1.6vw, 13px);
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 0.07em;
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 1.2s ease;
+        }
+
+        #click-hint.visible {
+            opacity: 0.8;
+            pointer-events: auto;
+        }
+
+        .heart-title {
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 2.5s ease;
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+        }
+        .heart-title.visible {
+            opacity: 1;
+            animation: floatTitle 4s ease-in-out infinite alternate;
+        }
+        .heart-title .subtitle {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(12px, 3vw, 16px);
+            font-weight: 300;
+            letter-spacing: 8px;
+            color: #ffd1dc;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255, 209, 220, 0.5);
+            display: block;
+            margin-bottom: -5px;
+        }
+        .heart-title .main-title {
+            font-family: 'Great Vibes', cursive;
+            font-size: clamp(50px, 12vw, 90px);
+            font-weight: 400;
+            color: #fff;
+            text-shadow: 0 0 15px rgba(255, 153, 204, 0.9), 0 0 30px rgba(255, 153, 204, 0.6), 0 0 50px rgba(255, 153, 204, 0.4);
+            line-height: 1.2;
+        }
+        @keyframes floatTitle {
+            0% { transform: translate(-50%, 0); }
+            100% { transform: translate(-50%, -10px); }
+        }
+
+        /* ── Canvas fills viewport ───────────────────────────── */
+        canvas {
+            display: block;
+            position: fixed;
+            inset: 0;
         }
     </style>
-
-    <!-- Import map giúp browser hiểu "three" là thư viện nào -->
-    <script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
-  }
-}
-</script>
-
 </head>
 
 <body>
-    <button id="btn" style="
-position:absolute;
-bottom:10%;
-left:50%;
-transform:translateX(-50%);
-width:100px;
-padding:10px 20px;
-font-size:16px;
-">
-        Click vào đây
+
+    <!-- ── Loading Screen ──────────────────────────────────────── -->
+    <div id="loading-screen" role="status" aria-label="Đang tải...">
+        <div id="loading-content">
+            <h1 id="loading-title">✨ Happy Birthday Hoàn</h1>
+            <div id="loading-bar-wrapper">
+                <div id="loading-bar"></div>
+            </div>
+            <p id="loading-text">Đang khởi tạo...</p>
+        </div>
+    </div>
+
+    <!-- ── Main Toggle Button ─────────────────────────────────── -->
+    <button id="btn" aria-label="Chuyển đổi chế độ hiển thị">
+        <span id="btn-text">Click vào đây</span>
+        <div id="btn-ripple" aria-hidden="true"></div>
     </button>
-    <script type="module">
 
-        // Import thư viện 3D
-        import * as THREE from "three";
-
-        // Import control để xoay camera bằng chuột
-        import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
-        import { FontLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/FontLoader.js";
-        import { TextGeometry } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/geometries/TextGeometry.js";
-        import { MeshSurfaceSampler } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/math/MeshSurfaceSampler.js";
-        // ========================
-        // TẠO SCENE
-        // ========================
-
-        // Scene là "thế giới 3D" nơi chứa mọi object
-        const scene = new THREE.Scene();
-
-        // ========================
-        // TẠO CAMERA
-        // ========================
-        const camera = new THREE.PerspectiveCamera(
-            75, // góc nhìn (FOV)
-
-            window.innerWidth / window.innerHeight, // tỉ lệ màn hình
-
-            0.1, // khoảng cách render gần nhất
-
-            1000 // khoảng cách render xa nhất
-        );
-
-        // đẩy camera ra xa để nhìn thấy sphere
-        camera.position.z = 250;
-
-
-        // ========================
-        // TẠO RENDERER
-        // ========================
-
-        // Renderer dùng WebGL để vẽ scene
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        let focusedSprite = null;
-        // set kích thước canvas = full màn hình
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
-        // thêm canvas vào HTML
-        document.body.appendChild(renderer.domElement);
-
-
-        // ========================
-        // CHUỘT XOAY CAMERA
-        // ========================
-
-        // cho phép drag chuột xoay camera
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.mouseButtons.RIGHT = null;
-        controls.enablePan = false;
-        // số lượng hạt
-        const particles = 50000;
-
-        // geometry chứa dữ liệu vị trí của các hạt
-        const geometry = new THREE.BufferGeometry();
-        // mảng chứa vị trí xyz của từng hạt
-        // mỗi hạt có 3 giá trị (x,y,z)
-        // const positions = new Float32Array(particles * 3);
-        const imageUrls = [
-            "img1.jpg",
-            "img2.jpg",
-            "img3.jpg",
-            "img4.jpg",
-            "img5.jpg",
-            "img6.jpg",
-            "img7.jpg",
-            "img8.jpg",
-            "img1.jpg",
-            "img2.jpg",
-            "img3.jpg",
-            "img4.jpg",
-            "img5.jpg",
-        ];
-        let i = 0;
-        const spherePositions = new Float32Array(particles * 3);
-        const currentPositions = new Float32Array(particles * 3);
-        const textPositions = new Float32Array(particles * 3);
-        const superTextPositions = new Float32Array(particles * 3);
-        // const explodePositions = new Float32Array(particles * 3);
-        let targetPositions = spherePositions;
-        let isText = false;
-        let textReady = false;
-        // bán kính sphere
-        const radius = 150;
-
-        // ========================
-        // TẠO VỊ TRÍ HẠT
-        // ========================
-        const stars = new THREE.BufferGeometry();
-        const starPositions = new Float32Array(2000 * 3);
-
-        for (let i = 0; i < 2000; i++) {
-
-            starPositions[i * 3] = (Math.random() - 0.5) * 2000;
-            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
-            starPositions[i * 3 + 2] = (Math.random() - 0.5) * 2000;
-
-        }
-
-        stars.setAttribute(
-            "position",
-            new THREE.BufferAttribute(starPositions, 3)
-        );
-
-        const starMaterial = new THREE.PointsMaterial({
-            size: 1,
-            color: 0xff66cc
-        });
-
-        const starField = new THREE.Points(stars, starMaterial);
-
-        scene.add(starField);
-        for (let i = 0; i < particles; i++) {
-
-            // góc xoay quanh trục
-            const theta = Math.random() * Math.PI * 2;
-
-            // góc từ cực
-            const phi = Math.acos((Math.random() * 2) - 1);
-
-            // random radius nhưng bias về tâm
-            // pow(random,2) làm hạt tập trung nhiều ở trung tâm
-            const r = radius * Math.pow(Math.random(), 1.2);
-
-            // chuyển từ tọa độ cầu → tọa độ xyz
-            spherePositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-            spherePositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-            spherePositions[i * 3 + 2] = r * Math.cos(phi);
-
-            spherePositions[i * 3] += (Math.random() - 0.5) * 2;
-            spherePositions[i * 3 + 1] += (Math.random() - 0.5) * 2;
-            spherePositions[i * 3 + 2] += (Math.random() - 0.5) * 2;
-
-        }
-        currentPositions.set(spherePositions);
-
-        // đưa dữ liệu position vào geometry
-        geometry.setAttribute(
-            "position",
-            new THREE.BufferAttribute(currentPositions, 3)
-        );
-
-
-        // ========================
-        // TEXTURE PARTICLE
-        // ========================
-
-        // texture hình tròn giúp particle không bị vuông
-        const texture = new THREE.TextureLoader().load(
-            "https://threejs.org/examples/textures/sprites/disc.png"
-        );
-
-
-        // ========================
-        // MATERIAL PARTICLE
-        // ========================
-
-        const material = new THREE.PointsMaterial({
-
-            map: texture, // dùng texture tròn
-
-            size: 0.8, // kích thước particle
-
-            transparent: true, // cho phép alpha
-
-            depthWrite: false, // tránh lỗi depth khi particle chồng nhau
-
-            blending: THREE.AdditiveBlending, // ánh sáng cộng dồn (glow)
-
-            sizeAttenuation: true, // particle xa sẽ nhỏ hơn
-
-            color: 0xff4fa3 // màu hồng
-        });
-        const glowMaterial = new THREE.PointsMaterial({
-
-            map: texture,
-            size: 1.2,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            opacity: 0.2,
-            color: 0xff77cc
-
-        });
-        const glow = new THREE.Points(geometry, glowMaterial);
-        scene.add(glow);
-        const sprites = [];
-        const loaderTexture = new THREE.TextureLoader();
-        function roundedTexture(image, radius = 80) {
-
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-
-            canvas.width = image.width;
-            canvas.height = image.height;
-
-            ctx.beginPath();
-            ctx.moveTo(radius, 0);
-            ctx.lineTo(canvas.width - radius, 0);
-            ctx.quadraticCurveTo(canvas.width, 0, canvas.width, radius);
-            ctx.lineTo(canvas.width, canvas.height - radius);
-            ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - radius, canvas.height);
-            ctx.lineTo(radius, canvas.height);
-            ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - radius);
-            ctx.lineTo(0, radius);
-            ctx.quadraticCurveTo(0, 0, radius, 0);
-            ctx.closePath();
-
-            ctx.clip();
-            ctx.drawImage(image, 0, 0);
-
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.colorSpace = THREE.SRGBColorSpace;
-
-            return tex;
-        }
-        imageUrls.forEach(url => {
-
-            const spriteMaterial = new THREE.SpriteMaterial({
-                transparent: true,
-                depthWrite: false,
-                opacity: 0.95
-            });
-
-            const sprite = new THREE.Sprite(spriteMaterial);
-
-            sprite.position.set(0, 0, 0);
-            sprite.visible = false;
-
-            scene.add(sprite);
-            sprites.push(sprite);
-
-            loaderTexture.load(url, (texture) => {
-
-                texture.colorSpace = THREE.SRGBColorSpace;
-
-                const rounded = roundedTexture(texture.image, 120);
-                spriteMaterial.map = rounded;
-
-                const ratio = texture.image.width / texture.image.height;
-                const size = 40;
-
-                sprite.scale.set(size * ratio, size, 1);
-                sprite.userData.baseScale = new THREE.Vector3(size * ratio, size, 1);
-            });
-
-        });
-        const explodePositions = [];
-        const startPositions = [];
-
-        sprites.forEach(() => {
-
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(Math.random() * 2 - 1);
-
-            const r = 100 * Math.cbrt(Math.random()); // nằm trong sphere
-
-            const x = r * Math.sin(phi) * Math.cos(theta);
-            const y = r * Math.sin(phi) * Math.sin(theta);
-            const z = r * Math.cos(phi);
-
-            explodePositions.push(new THREE.Vector3(x, y, z));
-
-        });
-
-        sprites.forEach(sprite => {
-
-            startPositions.push(new THREE.Vector3(
-                0,
-                0,
-                0
-            ));
-
-        });
-
-
-        // ========================
-        // TẠO OBJECT PARTICLE
-        // ========================
-
-        // Points = object chứa nhiều particle
-        const sphere = new THREE.Points(geometry, material);
-        const loader = new FontLoader();
-
-        loader.load(
-            "https://threejs.org/examples/fonts/gentilis_regular.typeface.json",
-            function (font) {
-
-                const textGeo = new TextGeometry("HOAN DZ", {
-                    font: font,
-                    size: 40,
-                    height: 5,
-                    curveSegments: 12,
-                    bevelEnabled: false
-                });
-
-                textGeo.center();
-
-                const textMesh = new THREE.Mesh(textGeo);
-
-                const sampler = new MeshSurfaceSampler(textMesh).build();
-
-                const tempPosition = new THREE.Vector3();
-
-                for (let i = 0; i < particles; i++) {
-
-                    sampler.sample(tempPosition);
-
-                    textPositions[i * 3] = tempPosition.x;
-                    textPositions[i * 3 + 1] = tempPosition.y;
-                    textPositions[i * 3 + 2] = tempPosition.z;
-
-                }
-                const textGeo2 = new TextGeometry("HOAN SIEU DZ", {
-                    font: font,
-                    size: 40,
-                    height: 5,
-                    curveSegments: 12,
-                    bevelEnabled: false
-                });
-
-                textGeo2.center();
-
-                const textMesh2 = new THREE.Mesh(textGeo2);
-
-                const sampler2 = new MeshSurfaceSampler(textMesh2).build();
-
-                for (let i = 0; i < particles; i++) {
-
-                    sampler2.sample(tempPosition);
-
-                    superTextPositions[i * 3] = tempPosition.x;
-                    superTextPositions[i * 3 + 1] = tempPosition.y;
-                    superTextPositions[i * 3 + 2] = tempPosition.z;
-
-                }
-                textReady = true;
-            });
-        // thêm vào scene
-        scene.add(sphere);
-
-        // ========================
-        // ANIMATION LOOP
-        // ========================
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const time = Date.now() * 0.001;
-            material.size = 0.5 + Math.sin(time * 3) * 0.1;
-            // xoay sphere nhẹ
-            if (!isText) {
-                sphere.rotation.y += 0.001;
-            }
-
-            // update control chuột
-            controls.update();
-            // render scene 
-            const pos = currentPositions;
-
-
-            sprites.forEach((sprite, k) => {
-
-                if (sprite !== focusedSprite) {
-
-                    const target = explodePositions[k];
-
-                    sprite.position.lerp(target, 0.05);
-
-                }
-                if (!isText) {
-
-                    const time = Date.now() * 0.001;
-
-                    // sprite.position.x += Math.sin(time * 2 + k) * 0.3;
-                    sprite.position.y += Math.cos(time * 2 + k) * 0.2;
-
-                }
-
-            });
-
-
-            for (let i = 0; i < particles; i++) {
-
-                const ix = i * 3;
-                const iy = i * 3 + 1;
-                const iz = i * 3 + 2;
-
-                pos[ix] += (targetPositions[ix] - pos[ix]) * 0.05;
-                pos[iy] += (targetPositions[iy] - pos[iy]) * 0.05;
-                pos[iz] += (targetPositions[iz] - pos[iz]) * 0.05;
-
-                // rung nhẹ khi đang là text
-                if (isText) {
-
-                    pos[ix] += Math.sin(time * 3 + i) * 0.02;
-                    pos[iy] += Math.cos(time * 2 + i) * 0.02;
-
-                }
-
-            }
-            if (focusedSprite) {
-
-                const dir = new THREE.Vector3();
-                camera.getWorldDirection(dir);
-
-                const targetPos = camera.position.clone().add(dir.multiplyScalar(120));
-                focusedSprite.position.lerp(targetPos, 0.08);
-
-                const base = focusedSprite.userData.baseScale;
-
-                focusedSprite.scale.lerp(
-                    new THREE.Vector3(base.x * 3, base.y * 3, 1),
-                    0.08
-                );
-
-            }
-            sprites.forEach((sprite, k) => {
-
-                if (sprite !== focusedSprite) {
-
-                    const target = explodePositions[k];
-
-                    sprite.position.lerp(target, 0.05);
-
-                    if (sprite.userData.baseScale) {
-
-                        sprite.scale.lerp(
-                            sprite.userData.baseScale,
-                            0.08
-                        );
-
-                    }
-
-                }
-
-            });
-            glow.rotation.copy(sphere.rotation);
-            geometry.attributes.position.needsUpdate = true;
-            renderer.render(scene, camera);
-        }
-
-        animate();
-        window.addEventListener("click", onClick);
-        function onClick(event) {
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-
-            const intersects = raycaster.intersectObjects(sprites);
-
-            if (intersects.length > 0) {
-
-                focusedSprite = intersects[0].object;
-
-            } else {
-
-                focusedSprite = null;
-
-            }
-
-        }
-        const button = document.getElementById("btn");
-
-        button.onclick = () => {
-
-            if (!textReady) return; // chưa load font thì bỏ
-
-
-            if (i === 1) {
-                sprites.forEach(sprite => {
-
-                    sprite.position.set(0, 0, 0); // reset về trung tâm
-                    sprite.visible = true;
-
-                });
-            }
-            if (isText) {
-                targetPositions = spherePositions;
-                i = 0;
-            } else {
-                targetPositions = textPositions;
-                setTimeout(() => {
-
-                    targetPositions = superTextPositions;
-
-                }, 2000);
-
-                i = 1;
-            }
-
-            isText = !isText;
-
-        };
-    </script>
+    <!-- ── Click Hint ────────────────────────────────────────── -->
+    <p id="click-hint" aria-hidden="true">Click ảnh để phóng to • Click lại để thu nhỏ</p>
+    <div id="heart-title" class="heart-title">
+        <span class="subtitle">Kỷ Niệm</span><br>
+        <span class="main-title">Hoàng & Nhi</span>
+    </div>
+
+    <!-- ── App Entry Point ───────────────────────────────────── -->
+    <script type="module" src="src/main.js"></script>
 
 </body>
 
